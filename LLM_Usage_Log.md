@@ -31,21 +31,21 @@ This page logs how we used AI tools while developing our parallel Credit Risk An
       <tr style="border-bottom: 1px solid #444;">
         <td style="padding: 10px;">3</td>
         <td style="padding: 10px;">Sequential Implementation</td>
-        <td style="padding: 10px;"><strong>[Reconstructed Prompt Summary]</strong><br>"Explain how to implement a sequential C++ program that generates customer records, calculates risk scores, counts risk categories, and identifies the riskiest customers."</td>
+        <td style="padding: 10px;">"Explain how to implement a sequential C++ program that generates customer records, calculates risk scores, counts risk categories, and identifies the riskiest customers."</td>
         <td style="padding: 10px;">We implemented the sequential version in <code>credit_risk_seq.cpp</code>. It generates records in memory, calculates risk scores, counts categories, and maintains a Top-K list.</td>
         <td style="padding: 10px;">Execution is confirmed. The program successfully compiles and prints execution time, category counts, mean score, total expected loss, and the Top-K riskiest customers.</td>
       </tr>
       <tr style="border-bottom: 1px solid #444;">
         <td style="padding: 10px;">4</td>
         <td style="padding: 10px;">OpenMP Parallelization</td>
-        <td style="padding: 10px;"><strong>[Reconstructed Prompt Summary]</strong><br>"Explain how to parallelize customer risk calculations with OpenMP and safely combine per-thread results."</td>
+        <td style="padding: 10px;">"Explain how to parallelize customer risk calculations with OpenMP and safely combine per-thread results."</td>
         <td style="padding: 10px;">We implemented the parallel version in <code>credit_risk_omp.cpp</code>. Each thread maintains local counters and a local Top-K heap, and the program merges these results after processing.</td>
         <td style="padding: 10px;">The script <code>compare.py</code> verifies that bucket counts, Top-K lists, mean scores, and total expected loss match between the sequential and OpenMP versions within a floating-point tolerance.</td>
       </tr>
       <tr style="border-bottom: 1px solid #444;">
         <td style="padding: 10px;">5</td>
         <td style="padding: 10px;">Performance Evaluation</td>
-        <td style="padding: 10px;"><strong>[Reconstructed Prompt Summary]</strong><br>"How can we measure execution time, speedup, and parallel efficiency for sequential and OpenMP implementations across different input sizes and thread counts?"</td>
+        <td style="padding: 10px;">"How can we measure execution time, speedup, and parallel efficiency for sequential and OpenMP implementations across different input sizes and thread counts?"</td>
         <td style="padding: 10px;">We used <code>benchmark.py</code> to run performance experiments and record results in <code>results.csv</code>.</td>
         <td style="padding: 10px;">Recorded benchmark results include 50 million records, with a sequential time of 0.201543 seconds and an eight-thread time of 0.047716 seconds. This corresponds to approximately 4.22x speedup.</td>
       </tr>
