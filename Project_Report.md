@@ -8,7 +8,12 @@ The objective of this project is to develop a computational approach for analyzi
 - Credit history length (10% weight)
 - Loan-to-income ratio (15% weight)
 
-Each customer is assigned a risk score from 0 to 100, which categorizes them into risk buckets: Low (< 35), Medium (35-59), and High (>= 60). The application also computes the total expected loss based on the probability of default and loan amounts, and identifies the top-10 riskiest customers. 
+Each customer is assigned a risk score from 0 to 100, which categorizes them into risk buckets:
+- Low Risk: score less than 35
+- Medium Risk: score greater than or equal to 35 and less than 60
+- High Risk: score greater than or equal to 60
+
+The application also computes a simplified proxy for total expected loss using a squared probability of default `(score/100)^2` and a fixed loss-given-default of 45% of the loan amount, and identifies the top-10 riskiest customers. 
 The analysis is applied to varying data volumes to evaluate performance and scalability.
 
 ## 2. Algorithm and Implementation
@@ -26,15 +31,21 @@ For each customer, it:
 The parallel implementation utilizes OpenMP to distribute the analysis across multiple CPU threads.
 **Parallelization Strategy:**
 - We use `#pragma omp parallel` to spawn a team of threads.
-- Each thread maintains its own **private/local variables**: bucket counters (`lr.count`), sums (`lr.sum_score`, `lr.sum_loss`), and a private top-K heap (`ltop`). This avoids race conditions and false sharing during the hot loop.
+- Each thread maintains its own **private/local variables**: bucket counters (`lr.count`), sums (`lr.sum_score`, `lr.sum_loss`), and a private top-K heap (`ltop`). This avoids race conditions on the local result structures and reduces contention on shared results.
 - The `for` loop is parallelized using `#pragma omp for schedule(static) nowait`, meaning the dataset is divided into equal chunks and distributed to threads.
-- After the parallel loop finishes, all threads enter a `#pragma omp critical` section to merge their private results into the global `Result` structure and the global `TopK` heap. Since this merging happens only once per thread, the serial overhead is minimal.
+- After each thread completes its assigned iterations, it enters a `#pragma omp critical` section to merge its local counters, sums, and Top-K results into the shared results. Because each thread completes its own local processing before merging, the merge is protected from concurrent updates to the shared structures. The `nowait` clause avoids the implicit barrier at the end of the work-sharing loop.
 
 ## 3. Correctness Verification
 The OpenMP parallel version is verified against the sequential baseline using `compare.py`. Since floating-point arithmetic is not associative, parallel sums might yield slightly different results due to round-off errors. We account for this by comparing sums with a small tolerance (1e-8 relative), while integer bucket counts and top-K exact matches are required.
 
 ## 4. Performance Evaluation
 The performance of the sequential and parallel implementations was evaluated by measuring the analysis time across varying dataset sizes (up to 50 million records) and different OpenMP thread counts (1, 2, 4, 8). 
+
+**Hardware & Compiler Configuration:**
+* **Processor:** Apple M4
+* **Compiler:** Apple clang version 17.0.0
+* **Flags:** `-O3 -Xpreprocessor -fopenmp -lomp` (Standard Mac OpenMP flags)
+* **OpenMP Configuration:** 1, 2, 4, and 8 threads
 
 **Key Results (50 Million Records):**
 * **Sequential Baseline:** ~0.2015 seconds
@@ -43,12 +54,11 @@ The performance of the sequential and parallel implementations was evaluated by 
 * **OpenMP (8 Threads):** ~0.0477 seconds (Speedup: ~4.22x, Efficiency: ~0.53)
 
 **Analysis:**
-The OpenMP implementation demonstrates excellent speedup. For 50 million records, utilizing 8 threads results in a ~4.2x speedup compared to the sequential version. The efficiency drops as thread count increases, which is typical for memory-bound or highly synchronized operations, but our strategy of using thread-local variables minimized contention and avoided false sharing, leading to a very scalable solution.
+The OpenMP implementation improves performance as the thread count increases. For 50 million records, the eight-thread run achieves approximately 4.22× speedup compared with the sequential baseline. Parallel efficiency decreases as more threads are used, indicating that the speedup does not increase proportionally with the number of threads. The thread-local counters and Top-K heaps reduce contention during customer processing, while the final merge still requires synchronization.
 
 *Note: Visual graphs (`speedup_vs_threads.png`, `efficiency_vs_threads.png`, and `time_vs_size.png`) and the raw data (`results.csv`) are available in the project directory.*
 
 ## 5. Team Contribution
-- **Student 1**: Understanding problem statement, implementing sequential baseline.
-- **Student 2**: Developing OpenMP parallel version, designing local-variables approach for race condition avoidance.
-- **Student 3**: Writing `compare.py` and `benchmark.py`, setting up evaluation framework.
-- **Student 4**: Conducting performance evaluation, generating graphs, compiling the final report and documentation.
+* **Student 1:** Problem analysis, risk-scoring logic, and sequential implementation.
+* **Student 2:** OpenMP parallel implementation, thread-local result handling, and merging of partial results.
+* **Student 3:** Correctness comparison, benchmarking, performance analysis, graph generation, and final report documentation.
