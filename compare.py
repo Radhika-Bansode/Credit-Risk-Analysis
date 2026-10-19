@@ -7,8 +7,15 @@ parallel sum adds floating-point numbers in a different order."""
 import subprocess, sys
 
 def run(cmd):
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-    return [l for l in out.splitlines() if l.startswith("RESULT")]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+        return [l for l in out.splitlines() if l.startswith("RESULT")]
+    except subprocess.CalledProcessError as e:
+        if e.stderr:
+            sys.stderr.write(e.stderr)
+        else:
+            sys.stderr.write(f"Error executing command: {' '.join(cmd)}\n")
+        sys.exit(e.returncode)
 
 def kv(line):
     return dict(p.split("=") for p in line.split()[1:] if "=" in p)
@@ -16,6 +23,24 @@ def kv(line):
 def main():
     N = sys.argv[1] if len(sys.argv) > 1 else "1000000"
     threads = sys.argv[2:] or ["1", "2", "4", "8"]
+
+    try:
+        if int(N) <= 0:
+            sys.stderr.write(f"Error: invalid number of records N '{N}'. N must be a positive integer (> 0).\n")
+            sys.exit(1)
+    except ValueError:
+        sys.stderr.write(f"Error: invalid number of records N '{N}'. N must be a positive integer (> 0).\n")
+        sys.exit(1)
+
+    for t in threads:
+        try:
+            if int(t) <= 0:
+                sys.stderr.write(f"Error: invalid number of threads '{t}'. Threads must be a positive integer (> 0).\n")
+                sys.exit(1)
+        except ValueError:
+            sys.stderr.write(f"Error: invalid number of threads '{t}'. Threads must be a positive integer (> 0).\n")
+            sys.exit(1)
+
     ref = run(["./credit_risk_seq", N])
     ok_all = True
     for t in threads:

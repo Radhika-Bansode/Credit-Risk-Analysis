@@ -12,9 +12,23 @@ ap.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4, 8])
 ap.add_argument("--reps", type=int, default=3)
 a = ap.parse_args()
 
+for n in a.sizes:
+    if n <= 0:
+        ap.error(f"--sizes must all be positive integers (> 0), got: {n}")
+for t in a.threads:
+    if t <= 0:
+        ap.error(f"--threads must all be positive integers (> 0), got: {t}")
+if a.reps <= 0:
+    ap.error(f"--reps must be a positive integer (> 0), got: {a.reps}")
+
 def analysis_time(cmd):
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-    return float(re.search(r"analysis_s=([\d.]+)", out).group(1))
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+        return float(re.search(r"analysis_s=([\d.]+)", out).group(1))
+    except subprocess.CalledProcessError as e:
+        if e.stderr:
+            sys.stderr.write(e.stderr)
+        raise
 
 def best(cmd):  # best-of-reps reduces noise from other processes
     return min(analysis_time(cmd) for _ in range(a.reps))

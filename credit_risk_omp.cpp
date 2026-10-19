@@ -6,17 +6,52 @@
 //    (no sharing inside the loop => no races, no false sharing on hot data)
 //  - private results are merged once per thread in a critical section
 //    (only T merges in total, so the serial part is tiny)
+#include <cerrno>
+#include <climits>
 #include <omp.h>
 #include <cstdio>
 #include <cstdlib>
 #include "risk.h"
 
 int main(int argc, char **argv) {
-    if (argc < 3) { fprintf(stderr, "usage: %s N threads [seed]\n", argv[0]); return 1; }
-    const long long N    = strtoll(argv[1], nullptr, 10);
-    const int threads    = atoi(argv[2]);
-    const uint64_t seed  = argc > 3 ? strtoull(argv[3], nullptr, 10) : 42;
-    const size_t K       = 10;
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <N> <threads> [seed]\n", argv[0]);
+        return 1;
+    }
+
+    char *endptr = nullptr;
+
+    // Validate N
+    errno = 0;
+    long long N_val = strtoll(argv[1], &endptr, 10);
+    if (errno != 0 || *endptr != '\0' || N_val <= 0) {
+        fprintf(stderr, "Error: invalid number of records N '%s'. N must be a positive integer (> 0).\n", argv[1]);
+        return 1;
+    }
+    const long long N = N_val;
+
+    // Validate threads
+    errno = 0;
+    long threads_val = strtol(argv[2], &endptr, 10);
+    if (errno != 0 || *endptr != '\0' || threads_val <= 0 || threads_val > 1024) {
+        fprintf(stderr, "Error: invalid number of threads '%s'. Threads must be a positive integer (> 0).\n", argv[2]);
+        return 1;
+    }
+    const int threads = static_cast<int>(threads_val);
+
+    // Validate seed (optional, defaults to 42)
+    uint64_t seed = 42;
+    if (argc > 3) {
+        errno = 0;
+        unsigned long long s_val = strtoull(argv[3], &endptr, 10);
+        if (errno != 0 || *endptr != '\0') {
+            fprintf(stderr, "Error: invalid seed '%s'. Seed must be a valid non-negative integer.\n", argv[3]);
+            return 1;
+        }
+        seed = s_val;
+    }
+
+    const size_t K = 10;
     omp_set_num_threads(threads);
 
     // Phase 1: generation. Customer i depends only on (seed, i) => parallel-safe.

@@ -1,5 +1,6 @@
 // credit_risk_seq.cpp - sequential baseline.
 // Usage: ./credit_risk_seq <num_records> [seed=42] [dump.csv]
+#include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -11,10 +12,35 @@ static double now() {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) { fprintf(stderr, "usage: %s N [seed] [dump.csv]\n", argv[0]); return 1; }
-    const uint64_t N    = strtoull(argv[1], nullptr, 10);
-    const uint64_t seed = argc > 2 ? strtoull(argv[2], nullptr, 10) : 42;
-    const size_t   K    = 10;
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <N> [seed] [dump.csv]\n", argv[0]);
+        return 1;
+    }
+
+    char *endptr = nullptr;
+
+    // Validate N
+    errno = 0;
+    long long N_val = strtoll(argv[1], &endptr, 10);
+    if (errno != 0 || *endptr != '\0' || N_val <= 0) {
+        fprintf(stderr, "Error: invalid number of records N '%s'. N must be a positive integer (> 0).\n", argv[1]);
+        return 1;
+    }
+    const uint64_t N = static_cast<uint64_t>(N_val);
+
+    // Validate seed (optional, defaults to 42)
+    uint64_t seed = 42;
+    if (argc > 2) {
+        errno = 0;
+        unsigned long long s_val = strtoull(argv[2], &endptr, 10);
+        if (errno != 0 || *endptr != '\0') {
+            fprintf(stderr, "Error: invalid seed '%s'. Seed must be a valid non-negative integer.\n", argv[2]);
+            return 1;
+        }
+        seed = s_val;
+    }
+
+    const size_t K = 10;
 
     // Phase 1: generate data (not part of the timed analysis)
     double t0 = now();
