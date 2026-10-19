@@ -19,7 +19,7 @@ The analysis is applied to varying data volumes to evaluate performance and scal
 ## 2. Algorithm and Implementation
 The problem is naturally data-parallel. Each customer's risk score and expected loss can be calculated independently of other customers. 
 
-### Sequential Version (`credit_risk_seq.cpp`)
+### Sequential Version (`src/credit_risk_seq.cpp`)
 The sequential implementation iterates through the array of generated `Customer` records one by one. 
 For each customer, it:
 1. Calculates the risk score.
@@ -27,7 +27,7 @@ For each customer, it:
 3. Adds to the global sums for mean score and expected loss.
 4. Pushes the record to a top-K min-heap to keep track of the riskiest customers.
 
-### Parallel Version (`credit_risk_omp.cpp`)
+### Parallel Version (`src/credit_risk_omp.cpp`)
 The parallel implementation utilizes OpenMP to distribute the analysis across multiple CPU threads.
 **Parallelization Strategy:**
 - We use `#pragma omp parallel` to spawn a team of threads.
@@ -36,7 +36,7 @@ The parallel implementation utilizes OpenMP to distribute the analysis across mu
 - After each thread completes its assigned iterations, it enters a `#pragma omp critical` section to merge its local counters, sums, and Top-K results into the shared results. Because each thread completes its own local processing before merging, the merge is protected from concurrent updates to the shared structures. The `nowait` clause avoids the implicit barrier at the end of the work-sharing loop.
 
 ## 3. Correctness Verification
-The OpenMP parallel version is verified against the sequential baseline using `compare.py`. Since floating-point arithmetic is not associative, parallel sums might yield slightly different results due to round-off errors. We account for this by comparing sums with a small tolerance (1e-8 relative), while integer bucket counts and top-K exact matches are required.
+The OpenMP parallel version is verified against the sequential baseline using `scripts/compare.py`. Since floating-point arithmetic is not associative, parallel sums might yield slightly different results due to round-off errors. We account for this by comparing sums with a small tolerance (1e-8 relative), while integer bucket counts and top-K exact matches are required.
 
 ## 4. Performance Evaluation
 The performance of the sequential and parallel implementations was evaluated by measuring the analysis time across varying dataset sizes (up to 50 million records) and different OpenMP thread counts (1, 2, 4, 8). 
@@ -56,7 +56,7 @@ The performance of the sequential and parallel implementations was evaluated by 
 **Analysis:**
 The OpenMP implementation improves performance as the thread count increases. For 50 million records, the eight-thread run achieves approximately 4.22× speedup compared with the sequential baseline. Parallel efficiency decreases as more threads are used, indicating that the speedup does not increase proportionally with the number of threads. The thread-local counters and Top-K heaps reduce contention during customer processing, while the final merge still requires synchronization.
 
-*Note: Visual graphs (`speedup_vs_threads.png`, `efficiency_vs_threads.png`, and `time_vs_size.png`) and the raw data (`results.csv`) are available in the project directory.*
+*Note: Visual graphs (`speedup_vs_threads.png`, `efficiency_vs_threads.png`, and `time_vs_size.png`) and the raw data (`results.csv`) are available in the `output/` directory.*
 
 ## 5. Team Contribution
 * **Student 1:** Problem analysis, risk-scoring logic, and sequential implementation.
